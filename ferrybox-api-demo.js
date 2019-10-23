@@ -45,6 +45,16 @@ const fetchSignals = async (uuids, start, end) => {
     })
 };
 
+const fetchTrack = async (uuid, start, end) => {
+     return fetch(`https://api.niva.no/v1/track/${uuid}/${start}/${end}`, {
+        headers: {
+            Authorization: 'Bearer ' + token
+        }
+    }).then(response => {
+        return response.json();
+    });
+};
+
 const addPathToSignals = (metadata, signal) => {
   /**
    * Maps in metadata to each signal, instead of dealing with uuids
@@ -69,6 +79,7 @@ const addPathToSignals = (metadata, signal) => {
     };
 };
 
+// fetch measurement data
 Promise.all([
     fetchMetadata(signalsUuids),
     fetchSignals(signalsUuids, startTime, endTime)
@@ -77,5 +88,12 @@ Promise.all([
         const signalsMapped = signals.map((signal) => addPathToSignals(metadata, signal));
         // do something with signals list here..
         console.log(signalsMapped);
+    });
+
+
+// fetch track for color fantasy
+fetchTrack('4d9ff393-25a3-47b8-aaf1-8fbbccfec3c3', startTime, endTime)
+    .then(response => {
+        console.log(response)
     });
 

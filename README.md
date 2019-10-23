@@ -30,25 +30,173 @@ See [below](#setting-time-range-in-query) for description of time parameters.
 
 # API description
 API exposing timeseries and metadata about each timeserie.
+
+## Available endpoints
+```
+https://api.niva.no/v1/vessels
+https://api.niva.no/v1/details/[uuid]
+https://api.niva.no/v1/metaflow?uuid=[uuidlist comma separated]
+https://api.niva.no/v1/signal/[uuid]/[startDate]/[endDate]
+```
+
+## Authorization
+Access to the API is restricted. In order to get access, contact us at cloud@niva.no.
+Requests to the API needs to add a bearer token based on a JWT token. See ferrybox-api-demo.js for example.
  
-All objects in NIVA's meta data system has unique identifiers in the form
-of [UUIDs](https://en.wikipedia.org/wiki/Universally_unique_identifier),
-this includes time series. In order to fetch or insert time series data 
-user have to supply one or more valid UUIDs.
+Each API user may be restricted in terms of the following parameters:
+
+- region
+- startDate
+- endDate
+- signal uuids
+
+If a query is made for something which is restricted (e.g. outside allowed region) then no data is returned.
+
+The response will display the users' restriction in the header object, see [example below](#query-endpoint-get-v1signal).
 
 ## Output data format
-The default output from the all the endpoints are JSON.
-And if there request is answered without error the root data element is always `"t"`,
-the query endpoint can also return data in `geo-json`, `csv`, and Microsoft `Excel` format.
+The output from the all the endpoints are JSON.
 
 For JSON responses the query parameters will also be returned to the caller in the root `"header"`
 element of the response.
+### Query endpoint (GET `v1/track`)
+Example:
 
-#### Query endpoint (GET `v1/signal`)
-End-points for time-series queries (time indexed sequence of values). The underlying database and the
-API supports three types of time series: Numerical time-series with quality control, flags and data quality
-time series (single integer value and no qulaity flag), and GPS-tracks which are time-series where each
-time stamp have both longitude and latitude value.
+fetch track data for colorline fantasy (FA):
+```
+GET https://api.niva.no/v1/track/4d9ff393-25a3-47b8-aaf1-8fbbccfec3c3/2019-10-16T00:00:01+02:00/2019-10-23T00:00:01+02:00
+```
+
+response:
+```
+{
+  "features": [
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            10.8006,
+            55.6192
+          ],
+          [
+            10.8307,
+            55.5686
+          ]
+        ],
+        "type": "LineString"
+      },
+      "properties": {
+        "latitude": 55.6192,
+        "longitude": 10.8006,
+        "time": "2019-10-16T02:10:45"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            10.8307,
+            55.5686
+          ],
+          [
+            10.8621,
+            55.517
+          ]
+        ],
+        "type": "LineString"
+      },
+      "properties": {
+        "latitude": 55.5686,
+        "longitude": 10.8307,
+        "time": "2019-10-16T02:20:46"
+      },
+      "type": "Feature"
+    }
+  ],
+  "type": "FeatureCollection",
+  "id": "4d9ff393-25a3-47b8-aaf1-8fbbccfec3c3",
+  "startDate": "2019-10-16T00:00:01+02:00",
+  "endDate": "2019-10-23T00:00:01+02:00"
+}
+
+```
+
+### Query endpoint (GET `v1/signal`)
+End-points for time-series queries (time indexed sequence of values).
+
+#### Example:
+
+Fetch measurements for various timeseries:
+
+```
+    '4d9ff393-25a3-47b8-aaf1-8fbbccfec3c3', // FA/gpstrack
+    '720b78cb-3e82-4c4d-9b63-7d1ae1b7afc1', // FA/raw/ferrybox/INLET_TEMPERATURE
+    'd7d3c8c3-43f2-4881-bed3-63f03915ce9c', // FA/ferrybox/TURBIDITY
+    '314cd400-14a7-489a-ab97-bce6b11ad068', // FA/ferrybox/CTD/SALINITY
+    '2030a48e-024d-4f6a-a293-eb673321aaa2', // FA/ferrybox/CHLA_FLUORESCENCE/ADJUSTED
+    'a10ff360-3b1e-4984-a26f-d3ab460bdb51'  // FA/ferrybox/CDOM_FLUORESCENCE/ADJUSTED
+```
+
+The gpstrack needs to be added to the query in order to get locations. Example:
+```
+GET https://api.niva.no/v1/signal/4d9ff393-25a3-47b8-aaf1-8fbbccfec3c3,720b78cb-3e82-4c4d-9b63-7d1ae1b7afc1,d7d3c8c3-43f2-4881-bed3-63f03915ce9c,314cd400-14a7-489a-ab97-bce6b11ad068,2030a48e-024d-4f6a-a293-eb673321aaa2,a10ff360-3b1e-4984-a26f-d3ab460bdb51/2019-10-16T00:00:01+02:00/2019-10-23T00:00:01+02:00?dt=0
+```
+
+The list of uuids needs to be commaseparated.
+
+Response:
+```
+{
+  "header": {
+    "agg_type": "avg",
+    "dt": "0",
+    "end": "2019-10-23T00:00:01+02:00",
+    "geofencing": "POLYGON((10.130042581236012%2059.97929522138169%2C10.954017190611012%2059.97929522138169%2C10.954017190611012%2059.22046495654814%2C10.130042581236012%2059.22046495654814%2C10.130042581236012%2059.97929522138169))",
+    "start": "2019-10-16T00:00:01+02:00",
+    "uuid": "4d9ff393-25a3-47b8-aaf1-8fbbccfec3c3,720b78cb-3e82-4c4d-9b63-7d1ae1b7afc1,d7d3c8c3-43f2-4881-bed3-63f03915ce9c,314cd400-14a7-489a-ab97-bce6b11ad068,2030a48e-024d-4f6a-a293-eb673321aaa2,a10ff360-3b1e-4984-a26f-d3ab460bdb51"
+  },
+  "t": [
+    {
+      "2030a48e-024d-4f6a-a293-eb673321aaa2": 2.085,
+      "314cd400-14a7-489a-ab97-bce6b11ad068": 23.728,
+      "720b78cb-3e82-4c4d-9b63-7d1ae1b7afc1": 13.064,
+      "a10ff360-3b1e-4984-a26f-d3ab460bdb51": 0.5,
+      "d7d3c8c3-43f2-4881-bed3-63f03915ce9c": 0.26,
+      "latitude": 56.71,
+      "longitude": 11.8249,
+      "time": "2019-10-15T22:00:10"
+    },
+    {
+      "2030a48e-024d-4f6a-a293-eb673321aaa2": 2.085,
+      "314cd400-14a7-489a-ab97-bce6b11ad068": 23.711,
+      "720b78cb-3e82-4c4d-9b63-7d1ae1b7afc1": 13.069,
+      "a10ff360-3b1e-4984-a26f-d3ab460bdb51": 0.15,
+      "d7d3c8c3-43f2-4881-bed3-63f03915ce9c": 0.21,
+      "latitude": 56.7052,
+      "longitude": 11.82,
+      "time": "2019-10-15T22:01:10"
+    },
+    ...
+    {
+      "2030a48e-024d-4f6a-a293-eb673321aaa2": 2.175,
+      "314cd400-14a7-489a-ab97-bce6b11ad068": 22.108,
+      "720b78cb-3e82-4c4d-9b63-7d1ae1b7afc1": 12.228,
+      "a10ff360-3b1e-4984-a26f-d3ab460bdb51": 0.55,
+      "d7d3c8c3-43f2-4881-bed3-63f03915ce9c": 0.32,
+      "latitude": 56.9479,
+      "longitude": 11.7703,
+      "time": "2019-10-22T21:58:50"
+    }
+  ],
+  "id": "4d9ff393-25a3-47b8-aaf1-8fbbccfec3c3,720b78cb-3e82-4c4d-9b63-7d1ae1b7afc1,d7d3c8c3-43f2-4881-bed3-63f03915ce9c,314cd400-14a7-489a-ab97-bce6b11ad068,2030a48e-024d-4f6a-a293-eb673321aaa2,a10ff360-3b1e-4984-a26f-d3ab460bdb51",
+  "startDate": "2019-10-16T00:00:01+02:00",
+  "endDate": "2019-10-23T00:00:01+02:00"
+}
+```
+
+
+### misc
 
 Important features:
 1. By default all returned time series will be _time aggregated_.
@@ -73,8 +221,6 @@ Important features:
 
 The end point expect/accept the following parameters:
 * Time range for the query, can be given in different ways (see bellow), default is the last week
-* type (string): return type of the query, "json" (default), "geojson", "csv", and "excel" is currently supported,
-"json" is the default. "geojson" is only valid if one of the passed uuids is for a gpstrack.
 * n (integer): approximate number of data-points to return from the query
 * dt (string or flaot): time span for time aggregation of query. Must be a valid ISO8601 time span string
   (without begin and end time) like "P1D4H" or a float with the number of seconds in the time
@@ -86,14 +232,6 @@ The end point expect/accept the following parameters:
   ("avg", "min", "max", "sum", "count", "stddev", "mode", "median", "percentile").
 * percentile (float): fraction for percentile calculation, float between 0 and 1,
   if agg=percentile this parameter must be included
-* noqc (flag, true if included): flag to ignore the Data Quality flag in the query. If not included only data which has passed
-  the data quality check will be returned. 
-* region (WKT string): Only return data from inside a given geographical region.
-  The argument must be a region (polygon) defined as a
-  [WKT](https://en.wikipedia.org/wiki/Well-known_text) string where the
-  coordinates are assumed to be in [WGS84](https://en.wikipedia.org/wiki/World_Geodetic_System)
-  format.
-  Also note: if a region is supplied the query _must also include_ a uuid for an existing GPS track.
 
 #### Setting time range in query
 The parameters used to set the time range in a query are:
@@ -193,16 +331,3 @@ GeoJSON output for path data:
   "type": "FeatureCollection"
 }
 ```
-
-csv formatted time series data (UUIDs in header):
-```csv
-time,c23476c2-4a77-4def-bdf8-baa8669e54ab,e03fba93-1fed-49c2-ac5a-601dc2475915
-2017-02-19 00:00:00,394.41975,97.819
-2017-02-19 02:00:00,389.975042016807,97.1408403361345
-2017-02-19 04:00:00,384.841583333333,96.2420833333334
-2017-02-19 06:00:00,382.468833333333,93.6714166666667
-2017-02-19 08:00:00,373.506916666667,96.4565
-2017-02-19 10:00:00,360.409916666667,106.669916666667
-2017-02-19 12:00:00,272.821932773109,76.0510084033614
-```
-Excel data is formatted in a similar way as csv.
