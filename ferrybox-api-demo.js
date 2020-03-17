@@ -10,30 +10,19 @@ const token = jwt.sign({
     email: privateToken.client_email
 }, privateToken.private_key, {algorithm: 'RS256'});
 
-const signalsUuids = [
-    '4d9ff393-25a3-47b8-aaf1-8fbbccfec3c3', // FA/gpstrack
-    '720b78cb-3e82-4c4d-9b63-7d1ae1b7afc1', // FA/raw/ferrybox/INLET_TEMPERATURE
-    'd7d3c8c3-43f2-4881-bed3-63f03915ce9c', // FA/ferrybox/TURBIDITY
-    '314cd400-14a7-489a-ab97-bce6b11ad068', // FA/ferrybox/CTD/SALINITY
-    '2030a48e-024d-4f6a-a293-eb673321aaa2', // FA/ferrybox/CHLA_FLUORESCENCE/ADJUSTED
-    'a10ff360-3b1e-4984-a26f-d3ab460bdb51'  // FA/ferrybox/CDOM_FLUORESCENCE/ADJUSTED
+const metadata = [
+    {path: "FA/gpstrack", uuid: '4d9ff393-25a3-47b8-aaf1-8fbbccfec3c3'},
+    {path: "FA/raw/ferrybox/INLET_TEMPERATURE", uuid: '720b78cb-3e82-4c4d-9b63-7d1ae1b7afc1'},
+    {path: "FA/ferrybox/TURBIDITY", uuid: 'd7d3c8c3-43f2-4881-bed3-63f03915ce9c'},
+    {path: "FA/ferrybox/CTD/SALINITY", uuid: '314cd400-14a7-489a-ab97-bce6b11ad068'},
+    {path: "FA/ferrybox/CHLA_FLUORESCENCE/ADJUSTED", uuid: '2030a48e-024d-4f6a-a293-eb673321aaa2'},
+    {path: "FA/ferrybox/CDOM_FLUORESCENCE/ADJUSTED", uuid: 'a10ff360-3b1e-4984-a26f-d3ab460bdb51'}
 ];
 const startTime = '2019-10-16T00:00:01+02:00';
 const endTime = '2019-10-23T00:00:01+02:00';
 
-const fetchMetadata = async (uuids) => {
-    return fetch(`https://api.niva.no/v1/metaflow?uuid=${uuids.join(',')}`, {
-        headers: {
-            Authorization: 'Bearer ' + token
-        }
-    }).then(response => {
-        return response.json();
-    }).then(data => {
-        return data.t;
-    })
-};
-
-const fetchSignals = async (uuids, start, end) => {
+const fetchSignals = async (metadata, start, end) => {
+    const uuids = metadata.map(m => m.uuid);
     return fetch(`https://api.niva.no/v1/signal/${uuids.join(',')}/${start}/${end}?dt=0`, {
         headers: {
             Authorization: 'Bearer ' + token
@@ -46,7 +35,7 @@ const fetchSignals = async (uuids, start, end) => {
 };
 
 const fetchTrack = async (uuid, start, end) => {
-     return fetch(`https://api.niva.no/v1/track/${uuid}/${start}/${end}`, {
+    return fetch(`https://api.niva.no/v1/track/${uuid}/${start}/${end}`, {
         headers: {
             Authorization: 'Bearer ' + token
         }
@@ -56,16 +45,14 @@ const fetchTrack = async (uuid, start, end) => {
 };
 
 const addPathToSignals = (metadata, signal) => {
-  /**
-   * Maps in metadata to each signal, instead of dealing with uuids
-   */
-  const metadataUuids = metadata.map(metadata => metadata.uuid);
-    const uuids = Object.keys(signal).filter(key => metadataUuids.includes(key));
+    /**
+     * Maps in metadata to each signal, instead of dealing with uuids
+     */
     const measurements = Object.entries(signal)
-        .filter(([uuid, _]) => uuids.includes(uuid))
         .map(([uuid, value]) => {
+            const thing = metadata.find(m => m.uuid === uuid);
             return {
-                path: metadata.find(m => m.uuid === uuid).path,
+                path: thing ? thing.path : uuid,
                 value: value,
             }
         });
@@ -80,11 +67,8 @@ const addPathToSignals = (metadata, signal) => {
 };
 
 // fetch measurement data
-Promise.all([
-    fetchMetadata(signalsUuids),
-    fetchSignals(signalsUuids, startTime, endTime)
-])
-    .then(([metadata, signals]) => {
+fetchSignals(metadata, startTime, endTime)
+    .then((signals) => {
         const signalsMapped = signals.map((signal) => addPathToSignals(metadata, signal));
         // do something with signals list here..
         console.log(signalsMapped);
